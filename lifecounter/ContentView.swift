@@ -89,7 +89,7 @@ struct PlayerView: View {
             let adjustedAmount = amount * direction
             lifeTotal += adjustedAmount
             history.append("\(playerName) \(direction == 1 ? "gained" : "lost") \(abs(adjustedAmount)) life.")
-            lifeTotal = max(lifeTotal, 0)  // Ensure life total never goes below zero
+            lifeTotal = max(lifeTotal, 0)
         }
         changeAmount = ""
     }
