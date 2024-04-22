@@ -8,32 +8,51 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var player1Life = 20
-    @State private var player2Life = 20
+    @State private var players: [Int] = Array(repeating: 20, count: 4)
     @State private var loser: String?
+    @State private var gameStarted = false
+    @State private var history: [String] = []
 
     var body: some View {
-        VStack(spacing: 20) {
-            PlayerView(lifeTotal: $player1Life, playerName: "Player 1")
-            PlayerView(lifeTotal: $player2Life, playerName: "Player 2")
-            if let loser = loser {
-                Text("\(loser) LOSES!")
-                    .font(.title)
-                    .foregroundColor(.red)
+        NavigationView {
+            VStack {
+                Button("Add Player") {
+                    if players.count < 8 {
+                        players.append(20)
+                        history.append("Added Player \(players.count)")
+                    }
+                }
+                .disabled(gameStarted || players.count >= 8)
+
+                ScrollView {
+                    ForEach(players.indices, id: \.self) { index in
+                        PlayerView(lifeTotal: $players[index], playerName: "Player \(index + 1)", history: $history)
+                            .padding()
+                            .onChange(of: players[index]) { _ in
+                                gameStarted = true
+                                checkForLoser()
+                            }
+                    }
+                }
+                .frame(maxHeight: .infinity)
+
+                if let loser = loser {
+                    Text("\(loser) LOSES!")
+                        .font(.title)
+                        .foregroundColor(.red)
+                }
+
+                NavigationLink("History", destination: HistoryView(history: history))
             }
-        }
-        .padding()
-        .onChange(of: player1Life) { newValue in
-            checkForLoser(lifeTotal: newValue, playerName: "Player 1")
-        }
-        .onChange(of: player2Life) { newValue in
-            checkForLoser(lifeTotal: newValue, playerName: "Player 2")
+            .navigationBarTitle("Life Counter", displayMode: .inline)
         }
     }
 
-    private func checkForLoser(lifeTotal: Int, playerName: String) {
-        if lifeTotal <= 0 {
-            loser = playerName
+    private func checkForLoser() {
+        for (index, life) in players.enumerated() where life <= 0 {
+            loser = "Player \(index + 1)"
+            history.append("\(loser!) LOSES!")
+            break
         }
     }
 }
@@ -41,6 +60,8 @@ struct ContentView: View {
 struct PlayerView: View {
     @Binding var lifeTotal: Int
     var playerName: String
+    @Binding var history: [String]
+    @State private var changeAmount: String = ""
 
     var body: some View {
         VStack {
@@ -49,41 +70,39 @@ struct PlayerView: View {
             Text("\(lifeTotal)")
                 .font(.largeTitle)
             HStack {
-                Button(action: { updateLife(by: -5) }) {
-                    Text("-5")
-                        .padding()
-                        .foregroundColor(.white)
-                        .background(Color.red)
-                        .cornerRadius(5)
+                TextField("Change", text: $changeAmount)
+                    .keyboardType(.numberPad)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .frame(width: 60)
+                Button("−") {
+                    applyChange(-1)
                 }
-                Button(action: { updateLife(by: -1) }) {
-                    Text("-")
-                        .padding()
-                        .foregroundColor(.white)
-                        .background(Color.red)
-                        .cornerRadius(5)
-                }
-                Button(action: { updateLife(by: 1) }) {
-                    Text("+")
-                        .padding()
-                        .foregroundColor(.white)
-                        .background(Color.green)
-                        .cornerRadius(5)
-                }
-                Button(action: { updateLife(by: 5) }) {
-                    Text("+5")
-                        .padding()
-                        .foregroundColor(.white)
-                        .background(Color.green)
-                        .cornerRadius(5)
+                Button("+") {
+                    applyChange(1)
                 }
             }
         }
     }
 
-    private func updateLife(by amount: Int) {
-        let newLifeTotal = lifeTotal + amount
-        lifeTotal = max(newLifeTotal, 0)  // Ensure life total never goes below zero
+    private func applyChange(_ direction: Int) {
+        if let amount = Int(changeAmount) {
+            let adjustedAmount = amount * direction
+            lifeTotal += adjustedAmount
+            history.append("\(playerName) \(direction == 1 ? "gained" : "lost") \(abs(adjustedAmount)) life.")
+            lifeTotal = max(lifeTotal, 0)  // Ensure life total never goes below zero
+        }
+        changeAmount = ""
+    }
+}
+
+struct HistoryView: View {
+    var history: [String]
+    
+    var body: some View {
+        List(history, id: \.self) { entry in
+            Text(entry)
+        }
+        .navigationBarTitle("History")
     }
 }
 
